@@ -53,9 +53,9 @@ func main()  {
 	}
 
 	programs := []*Program{
-		&Program{
+		{
 			Name: "yes",
-			Command: "/usr/bin/yes",
+			Command: "./bin/yes.sh",
 			Numprocs: 1,
 			Autostart: true,
 			Startsecs: 3,
@@ -114,11 +114,11 @@ func startPrograms(taskmasterConfig *TaskmasterConfig, programs []*Program, env 
 					),
 				)
 			}
-			file, err := os.Open(logfile)
+			file,err := os.OpenFile(logfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 			if err != nil {
-				log.Printf("Can't open %s as stdout for process %s", logfile, p.Name)
+				log.Fatalf("Can't open %s\nerror: %v", logfile, err)
 			}
-			defer file.Close()
+			cmd.Stdout = file
 
 			// attach stderr
 			logfile = p.Stderr_logfile
@@ -126,18 +126,23 @@ func startPrograms(taskmasterConfig *TaskmasterConfig, programs []*Program, env 
 				logfile = path.Join(
 					taskmasterConfig.ChildLogDir,
 					strings.Join(
-						[]string{p.Name, strconv.Itoa(i), ".log"}, "_",
+						[]string{p.Name, strconv.Itoa(i), ".error"}, "_",
 					),
 				)
 			}
-			file, err = os.Open(logfile)
+			file, err = os.OpenFile(logfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 			if err != nil {
-				log.Printf("Can't open %s as stderr for process %s", logfile, p.Name)
+				log.Fatalf("Can't open %s\nerror: %v", logfile, err)
 			}
-			defer file.Close()
 			cmd.Stderr = file
 
 			p.processes =  append(p.processes, cmd)
+		}
+	}
+
+	for _, p := range(programs) {
+		for _, cmd := range(p.processes) {
+			cmd.Start()
 		}
 	}
 }
